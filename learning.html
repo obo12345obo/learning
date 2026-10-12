@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hebb Net — جدول تدريب تفاعلي</title>
+<style>
+:root{--paper:#f8f6ef;--ink:#1e303b;--line:#b8c4c6;--teal:#197a76;--yellow:#ffe16b;--blue:#dcecf8;--green:#dff1e5;--muted:#586b74;--red:#f8e2df}
+*{box-sizing:border-box}body{margin:0;background:#dfe6e5;color:var(--ink);font-family:Tahoma,Arial,sans-serif}
+.wrap{max-width:1550px;margin:18px auto;padding:20px;background:var(--paper);border:2px solid #b8c4c6;box-shadow:0 8px 28px #172b3a16}
+header{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:3px solid var(--ink);padding:0 4px 14px;margin-bottom:15px}
+h1{font-size:clamp(23px,2.3vw,36px);margin:0}.subtitle{font-size:16px;color:var(--muted);margin-top:7px}.tag{background:#e0efed;color:var(--teal);padding:9px 12px;border-radius:8px;font-weight:bold}
+.formulas{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:clamp(17px,1.5vw,23px);font-weight:bold;margin:12px 0}
+.formulas span{padding:9px 13px;background:#fff;border:1px solid var(--line);border-radius:7px;direction:ltr}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0}
+button{border:0;border-radius:7px;padding:10px 15px;font: bold 16px Tahoma;cursor:pointer;background:var(--ink);color:white}
+button.secondary{background:#dfeae8;color:var(--ink);border:1px solid #bdcdca}button.danger{background:#a8403c}button:disabled{opacity:.35;cursor:default}
+.hint{font-size:15px;color:var(--muted)}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:white;font-size:clamp(14px,1.3vw,19px);direction:ltr}
+th,td{border:1px solid #89999d;padding:9px 6px;text-align:center}
+thead tr:first-child th{background:#e5eeec}thead tr:nth-child(2) th{background:#f0f3ef}
+tbody tr{cursor:pointer}tbody tr:hover{background:#fff6cf}tbody tr.selected{background:var(--yellow);outline:3px solid #b28c00;outline-offset:-3px}
+td.num{font-family:Consolas,monospace}
+td input,td select{font:17px Consolas,monospace;padding:6px 3px;width:68px;text-align:center;border:1px solid #b7c4c7;border-radius:5px;background:#fff}
+td .delete{padding:5px 9px;font-size:14px;background:#a8403c}
+.lab{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:15px;margin-top:16px}
+.panel{background:white;border:2px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.panel h2{font-size:22px;margin:0 0 12px}.row-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.counter{font-size:15px;color:var(--muted)}
+.eq-list{display:grid;gap:8px}.eq{font-family:Consolas,monospace;direction:ltr;text-align:left;background:#f3f5f2;border:1px solid #d2dada;border-radius:7px;padding:11px;font-size:clamp(15px,1.2vw,20px);opacity:.62;overflow-wrap:anywhere}
+.eq.active{opacity:1;background:var(--yellow);border:2px solid #c5a20d;font-weight:bold}.eq.done{opacity:1;background:#edf5ef;border-color:#9bc8aa}
+.explain{font-size:17px;line-height:1.65;padding:12px 14px;border-right:6px solid var(--teal);background:#eaf3f1;border-radius:5px;min-height:70px;margin-top:12px}
+.state{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.metric{border:2px solid var(--line);border-radius:8px;padding:9px;text-align:center;min-width:0}.metric label{display:block;font-size:14px;color:var(--muted);margin-bottom:5px}.metric strong{font:bold 25px Consolas;direction:ltr;display:block;overflow-wrap:anywhere}.metric.weight{background:var(--blue);border-color:#80b2d2}.metric.bias{background:var(--green);border-color:#88bd99}
+.mini{width:100%;font-size:16px;margin-top:8px}.mini th,.mini td{padding:8px 4px}.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.note{margin-top:12px;font-size:15px;line-height:1.6;color:var(--muted)}.count{font-weight:bold;color:var(--teal)}
+@media(max-width:900px){.wrap{margin:0;padding:10px}.lab{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column}.state{gap:4px}.metric strong{font-size:20px}.panel{padding:10px}}
+
+.navtabs{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}
+.navtabs button{font-size:17px}
+.navtabs button.active{background:var(--teal);color:#fff}
+.page{display:none}.page.active{display:block}
+.pattern-layout{display:grid;grid-template-columns:minmax(280px,.9fr) minmax(320px,1.1fr);gap:15px}
+.patterns-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pattern-card{border:1px solid var(--line);border-radius:9px;padding:12px;background:#fff;min-width:0}
+.pattern-editor{display:grid;grid-template-columns:repeat(5,42px);gap:5px;justify-content:center;margin:14px auto}
+.pixel{width:42px;height:42px;border:2px solid #aab9bc;border-radius:5px;background:#fff;color:#65747b;font:bold 22px Consolas;cursor:pointer;padding:0}
+.pixel.on{background:#253843;color:#fff;border-color:#253843}
+.class-label{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:15px}
+.class-label select{font:15px Tahoma;padding:6px;border:1px solid var(--line);border-radius:6px}
+.pattern-meta{font-size:14px;text-align:center;color:var(--muted);margin-top:8px}
+.vector{direction:ltr;text-align:left;font:15px Consolas;line-height:1.7;overflow-wrap:anywhere;background:#f3f5f2;padding:10px;border-radius:6px}
+.pattern-results{font-size:15px}.pattern-results td,.pattern-results th{padding:7px 4px}
+@media(max-width:850px){.pattern-layout{grid-template-columns:1fr}.patterns-row{grid-template-columns:1fr}.pixel{width:36px;height:36px}.pattern-editor{grid-template-columns:repeat(5,36px)}}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div><h1>Hebb Net — جدول تدريب تفاعلي</h1><div class="subtitle">أدخل أي عدد من أنماط التدريب، ثم اختر صفًا لمشاهدة تطبيق المعادلات خطوة بخطوة.</div></div><div class="tag">إدخالات قابلة للتعديل</div></header>
+<div class="navtabs">
+<button id="tabWeights" class="active" onclick="showPage('weights')">1. Weight Training</button>
+<button id="tabPatterns" onclick="showPage('patterns')">2. Pattern Classification</button>
+</div>
+<div id="weightsPage" class="page active">
+<div class="formulas"><span>Δw₁ = x₁ × y</span><span>Δw₂ = x₂ × y</span><span>Δb = y</span><span>new = old + Δ</span></div>
+
+<div class="toolbar">
+<button onclick="addRow()">＋ Add Pattern</button>
+<button class="secondary" onclick="loadExample()">تحميل المثال الافتراضي</button>
+<button class="secondary" onclick="clearRows()">مسح الكل</button>
+<span class="hint">يمكنك إدخال 1 أو -1 في x₁ وx₂ والهدف y. أضف حتى 20 نمطًا أو أكثر.</span>
+</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr><th colspan="4">Training pattern</th><th colspan="3">Weight changes</th><th colspan="3">Weights after update</th><th rowspan="2">Action</th></tr>
+<tr><th>#</th><th>x₁</th><th>x₂</th><th>y (target)</th><th>Δw₁</th><th>Δw₂</th><th>Δb</th><th>w₁</th><th>w₂</th><th>B</th></tr>
+</thead><tbody id="rows"></tbody>
+</table>
+</div>
+<div class="note">ملاحظة: دخل الانحياز ثابت ويساوي 1، لذلك Δb = 1 × y = y. العمود B هو الانحياز المتعلَّم بعد تحديث كل صف.</div>
+
+<div class="lab">
+<section class="panel">
+ <div class="row-head"><h2 id="rowTitle">خطوات حساب Pattern</h2><div class="counter" id="stepCount">الخطوة 1 / 4</div></div>
+ <div class="state">
+  <div class="metric weight"><label>الأوزان قبل التحديث</label><strong id="oldW">0, 0</strong></div>
+  <div class="metric bias"><label>الانحياز قبل التحديث</label><strong id="oldB">0</strong></div>
+  <div class="metric"><label>الهدف y</label><strong id="target">1</strong></div>
+ </div>
+ <div class="eq-list" id="equations"></div>
+ <div class="explain" id="explain"></div>
+ <div class="controls">
+  <button class="secondary" id="prev" onclick="move(-1)">← السابق</button>
+  <button id="next" onclick="move(1)">الخطوة التالية →</button>
+  <button class="secondary" onclick="restartRow()">إعادة خطوات الصف</button>
+ </div>
+</section>
+<section class="panel">
+ <h2>النتيجة بعد تطبيق المعادلات</h2>
+ <div class="state">
+  <div class="metric weight"><label>الوزن الجديد w₁</label><strong id="newW1">…</strong></div>
+  <div class="metric weight"><label>الوزن الجديد w₂</label><strong id="newW2">…</strong></div>
+  <div class="metric bias"><label>الانحياز الجديد B</label><strong id="newB">…</strong></div>
+ </div>
+ <table class="mini"><thead><tr><th>القيمة</th><th>القيمة القديمة + التغيير</th><th>الناتج</th></tr></thead><tbody id="resultRows"></tbody></table>
+ <div class="explain" id="resultExplain">اختر صفًا من الجدول، ثم تنقّل بين الخطوات لرؤية الحساب.</div>
+ <div class="note">كل صف يستخدم الأوزان الناتجة من الصف السابق. تعديل أي x أو y يعيد حساب الجدول كله تلقائيًا.</div>
+</section>
+</div>
+</div>
+<div id="patternsPage" class="page">
+  <div class="panel" style="margin-bottom:14px">
+    <h2>Pattern Classification: One Pattern = One Target</h2>
+    <div class="subtitle">Click cells in the 5×5 grid to draw a pattern. Filled cells (#) map to +1; empty cells (.) map to −1. Each complete pattern has exactly one target.</div>
+    <div class="toolbar">
+      <button onclick="addPattern()">＋ Add Pattern</button>
+      <button class="secondary" onclick="loadShapeExamples()">Load X and O Example</button>
+      <button onclick="trainPatterns()">Train Hebb & Classify</button>
+    </div>
+    <div id="patternEditors" class="patterns-row"></div>
+  </div>
+  <div class="pattern-layout">
+    <section class="panel">
+      <h2>Convert Pattern to Input Vector</h2>
+      <div id="selectedVector" class="vector">اختر نمطًا من البطاقات أعلاه.</div>
+      <div class="explain" id="vectorExplanation">Each cell becomes +1 or −1 and forms one input vector. The whole pattern has one target y.</div>
+      <div class="note">Hebb rule: wᵢ(new) = wᵢ(old) + xᵢ × y. Class X uses target +1; class O uses target −1.</div>
+    </section>
+    <section class="panel">
+      <h2>Training Results & Classification</h2>
+      <div class="state">
+        <div class="metric weight"><label>Input Cells</label><strong>25</strong></div>
+        <div class="metric bias"><label>Patterns</label><strong id="patternCount">2</strong></div>
+        <div class="metric"><label>آخر Net</label><strong id="lastNet">—</strong></div>
+      </div>
+      <div id="patternTrainingSteps" class="eq-list"><div class="eq">اضغط «Train Hebb & Classify» لبدء الحساب.</div></div>
+      <div class="table-scroll" style="margin-top:12px">
+        <table class="pattern-results"><thead><tr><th>Pattern</th><th>Target</th><th>Net</th><th>التصنيف</th><th>النتيجة</th></tr></thead><tbody id="patternResultRows"></tbody></table>
+      </div>
+    </section>
+  </div>
+</div>
+<script>
+const original=[
+{x1:1,x2:1,y:1},{x1:1,x2:-1,y:-1},{x1:-1,x2:1,y:-1},{x1:-1,x2:-1,y:-1}
+];
+let patterns=original.map(p=>({...p})), selected=0, phase=0;
+function fmt(n){return n<0?'−'+Math.abs(n):String(n)}
+function calculate(){
+ let w1=0,w2=0,B=0;
+ return patterns.map((p,i)=>{
+  const old={w1,w2,B}, dw1=p.x1*p.y,dw2=p.x2*p.y,db=p.y;
+  w1+=dw1;w2+=dw2;B+=db;
+  return {...p,i,oldW1:old.w1,oldW2:old.w2,oldB:old.B,dw1,dw2,db,newW1:w1,newW2:w2,newB:B};
+ });
+}
+function renderTable(){
+ const data=calculate();
+ document.getElementById('rows').innerHTML=data.map((r,i)=>`<tr class="${i===selected?'selected':''}" onclick="selectRow(${i})">
+ <td class="num">${i+1}</td>
+ <td><select aria-label="x1 pattern ${i+1}" onclick="event.stopPropagation()" onchange="editPattern(${i},'x1',this.value)">${option(r.x1)}</select></td>
+ <td><select aria-label="x2 pattern ${i+1}" onclick="event.stopPropagation()" onchange="editPattern(${i},'x2',this.value)">${option(r.x2)}</select></td>
+ <td><select aria-label="target pattern ${i+1}" onclick="event.stopPropagation()" onchange="editPattern(${i},'y',this.value)">${option(r.y)}</select></td>
+ <td class="num">${fmt(r.dw1)}</td><td class="num">${fmt(r.dw2)}</td><td class="num">${fmt(r.db)}</td>
+ <td class="num">${fmt(r.newW1)}</td><td class="num">${fmt(r.newW2)}</td><td class="num">${fmt(r.newB)}</td>
+ <td><button class="delete" onclick="event.stopPropagation();deleteRow(${i})">Delete</button></td></tr>`).join('');
+}
+function option(value){return [-1,1].map(n=>`<option value="${n}" ${n===value?'selected':''}>${n}</option>`).join('')}
+function editPattern(i,key,value){patterns[i][key]=Number(value);selected=i;phase=0;renderAll()}
+function addRow(){patterns.push({x1:1,x2:1,y:1});selected=patterns.length-1;phase=0;renderAll()}
+function deleteRow(i){if(patterns.length===1){alert('يجب أن يبقى Pattern واحد على الأقل.');return}patterns.splice(i,1);selected=Math.min(selected,patterns.length-1);phase=0;renderAll()}
+function clearRows(){if(!confirm('مسح جميع الأنماط والبدء بPattern واحد؟'))return;patterns=[{x1:1,x2:1,y:1}];selected=0;phase=0;renderAll()}
+function loadExample(){patterns=original.map(p=>({...p}));selected=0;phase=0;renderAll()}
+function selectRow(i){selected=i;phase=0;renderAll()}
+const steps=[
+ r=>({eq:`Δw₁ = x₁ × y = ${fmt(r.x1)} × (${fmt(r.y)}) = ${fmt(r.dw1)}`,text:`نعوّض x₁ والهدف y في قاعدة Hebb: ${fmt(r.x1)} × (${fmt(r.y)})، فيكون تغيّر الوزن الأول ${fmt(r.dw1)}.`}),
+ r=>({eq:`Δw₂ = x₂ × y = ${fmt(r.x2)} × (${fmt(r.y)}) = ${fmt(r.dw2)}`,text:`نستخدم المدخل الثاني: x₂ × y = ${fmt(r.x2)} × (${fmt(r.y)})، فيكون تغيّر الوزن الثاني ${fmt(r.dw2)}.`}),
+ r=>({eq:`Δb = y = ${fmt(r.y)}`,text:`دخل الانحياز الثابت يساوي 1؛ لذلك Δb = 1 × y = ${fmt(r.y)}.`}),
+ r=>({eq:`w₁=${fmt(r.oldW1)}+(${fmt(r.dw1)})=${fmt(r.newW1)}   |   w₂=${fmt(r.oldW2)}+(${fmt(r.dw2)})=${fmt(r.newW2)}   |   B=${fmt(r.oldB)}+(${fmt(r.db)})=${fmt(r.newB)}`,text:`نجمع التغيّرات مع القيم القديمة: w₁ يصبح ${fmt(r.newW1)}، وw₂ يصبح ${fmt(r.newW2)}، والانحياز B يصبح ${fmt(r.newB)}.`})
+];
+function renderLab(){
+ if(!patterns.length)return;
+ selected=Math.max(0,Math.min(selected,patterns.length-1));
+ const r=calculate()[selected], step=steps[phase](r);
+ document.getElementById('rowTitle').textContent=`Pattern ${selected+1}: تطبيق المعادلات`;
+ document.getElementById('stepCount').textContent=`الخطوة ${phase+1} / 4`;
+ document.getElementById('oldW').textContent=`${fmt(r.oldW1)}, ${fmt(r.oldW2)}`;
+ document.getElementById('oldB').textContent=fmt(r.oldB);
+ document.getElementById('target').textContent=fmt(r.y);
+ document.getElementById('equations').innerHTML=steps.map((fn,i)=>`<div class="eq ${i===phase?'active':i<phase?'done':''}">${fn(r).eq}</div>`).join('');
+ document.getElementById('explain').textContent=step.text;
+ document.getElementById('newW1').textContent=phase>=3?fmt(r.newW1):'…';
+ document.getElementById('newW2').textContent=phase>=3?fmt(r.newW2):'…';
+ document.getElementById('newB').textContent=phase>=3?fmt(r.newB):'…';
+ document.getElementById('resultRows').innerHTML=[
+ ['w₁',`${fmt(r.oldW1)} + (${fmt(r.dw1)})`,phase>=3?fmt(r.newW1):'؟'],
+ ['w₂',`${fmt(r.oldW2)} + (${fmt(r.dw2)})`,phase>=3?fmt(r.newW2):'؟'],
+ ['B',`${fmt(r.oldB)} + (${fmt(r.db)})`,phase>=3?fmt(r.newB):'؟']
+ ].map(a=>`<tr><td>${a[0]}</td><td>${a[1]}</td><td>${a[2]}</td></tr>`).join('');
+ document.getElementById('resultExplain').textContent=phase===3?`اكتمل حساب Pattern ${selected+1}. هذه الأوزان تصبح القيم القديمة للPattern التالي.`:'القيم النهائية مخفية حتى تصل إلى الخطوة الرابعة، لتتمكن من شرح طريقة استخراجها.';
+ document.getElementById('prev').disabled=phase===0&&selected===0;
+ document.getElementById('next').disabled=phase===3&&selected===patterns.length-1;
+ document.getElementById('next').textContent=phase===3?(selected<patterns.length-1?'Pattern التالي →':'اكتمل التدريب'):'الخطوة التالية →';
+}
+function move(n){
+ if(n===1){if(phase<3)phase++;else if(selected<patterns.length-1){selected++;phase=0}}
+ else {if(phase>0)phase--;else if(selected>0){selected--;phase=3}}
+ renderAll()
+}
+function restartRow(){phase=0;renderAll()}
+function renderAll(){renderTable();renderLab()}
+document.addEventListener('keydown',e=>{
+ if(['SELECT','INPUT','TEXTAREA'].includes(e.target.tagName))return;
+ if(e.key==='ArrowDown'||e.key==='ArrowRight'){e.preventDefault();move(1)}
+ if(e.key==='ArrowUp'||e.key==='ArrowLeft'){e.preventDefault();move(-1)}
+});
+
+function showPage(which){
+ document.getElementById('weightsPage').classList.toggle('active',which==='weights');
+ document.getElementById('patternsPage').classList.toggle('active',which==='patterns');
+ document.getElementById('tabWeights').classList.toggle('active',which==='weights');
+ document.getElementById('tabPatterns').classList.toggle('active',which==='patterns');
+}
+function blankGrid(){return Array(25).fill(0)}
+function makeX(){return [1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1]}
+function makeO(){return [0,1,1,1,0, 1,0,0,0,1, 1,0,0,0,1, 1,0,0,0,1, 0,1,1,1,0]}
+let shapePatterns=[
+ {name:'Pattern 1',label:'X',target:1,cells:makeX()},
+ {name:'Pattern 2',label:'O',target:-1,cells:makeO()}
+], selectedShape=0;
+function addPattern(){
+ shapePatterns.push({name:'Pattern '+(shapePatterns.length+1),label:'X',target:1,cells:blankGrid()});
+ selectedShape=shapePatterns.length-1;renderPatternEditors();renderSelectedVector();
+}
+function loadShapeExamples(){
+ shapePatterns=[{name:'Pattern 1',label:'X',target:1,cells:makeX()},{name:'Pattern 2',label:'O',target:-1,cells:makeO()}];
+ selectedShape=0;renderPatternEditors();renderSelectedVector();
+ document.getElementById('patternTrainingSteps').innerHTML='<div class="eq">Example loaded. Click Train Hebb to calculate the weights.</div>';
+ document.getElementById('patternResultRows').innerHTML='';document.getElementById('lastNet').textContent='—';
+}
+function renderPatternEditors(){
+ document.getElementById('patternEditors').innerHTML=shapePatterns.map((p,pi)=>`<div class="pattern-card">
+ <div class="row-head"><b>${p.name}</b><button class="secondary" onclick="selectShape(${pi})">View Vector</button></div>
+ <div class="pattern-editor">${p.cells.map((v,ci)=>`<button class="pixel ${v?'on':''}" title="خلية ${ci+1}" onclick="togglePixel(${pi},${ci})">${v?'#':'·'}</button>`).join('')}</div>
+ <div class="class-label">Class:
+ <select onchange="setShapeTarget(${pi},this.value)"><option value="X" ${p.label==='X'?'selected':''}>X (+1)</option><option value="O" ${p.label==='O'?'selected':''}>O (−1)</option><option value="Other" ${p.label==='Other'?'selected':''}>Other (+1)</option></select>
+ <button class="danger" onclick="removePattern(${pi})" ${shapePatterns.length<=1?'disabled':''}>Delete</button></div>
+ <div class="pattern-meta">25 input values → one target</div></div>`).join('');
+ document.getElementById('patternCount').textContent=shapePatterns.length;
+}
+function togglePixel(pi,ci){shapePatterns[pi].cells[ci]=shapePatterns[pi].cells[ci]?0:1;selectedShape=pi;renderPatternEditors();renderSelectedVector()}
+function selectShape(pi){selectedShape=pi;renderSelectedVector()}
+function setShapeTarget(pi,val){shapePatterns[pi].label=val;shapePatterns[pi].target=val==='O'?-1:1;renderPatternEditors();renderSelectedVector()}
+function removePattern(pi){if(shapePatterns.length<=1)return;shapePatterns.splice(pi,1);selectedShape=Math.min(selectedShape,shapePatterns.length-1);renderPatternEditors();renderSelectedVector()}
+function renderSelectedVector(){
+ const p=shapePatterns[selectedShape];if(!p)return;
+ const vec=p.cells.map(v=>v?1:-1);
+ document.getElementById('selectedVector').innerHTML=`<b>${p.name}</b> | Target y = <b>${p.target}</b><br><br>${vec.map((v,i)=>`${v}${i===24?'':', '}`).join('')}`;
+ document.getElementById('vectorExplanation').textContent=`The complete pattern is one input containing 25 values. Class ${p.label} has exactly one target: y = ${p.target}. Filled cells (#) = +1; empty cells = −1.`;
+}
+let patternStepIndex = 0;
+let patternTrainingLog = [];
+function trainPatterns(){
+ const n=25;let weights=Array(n).fill(0),bias=0,logs=[];
+ shapePatterns.forEach((p,patternIndex)=>{
+  const x=p.cells.map(v=>v?1:-1),y=p.target,old=weights.slice(),oldB=bias;
+  const deltas=x.map((xi,i)=>({i,xi,old:old[i],delta:xi*y,next:old[i]+xi*y}));
+  weights=weights.map((w,i)=>w+x[i]*y);bias+=y;
+  logs.push({p,patternIndex,x,y,old,oldB,deltas,weights:weights.slice(),bias});
+ });
+ const results=shapePatterns.map(p=>{
+  const x=p.cells.map(v=>v?1:-1),net=weights.reduce((s,w,i)=>s+w*x[i],0)+bias;
+  const predicted=net>=0?'Class X / +1':'Class O / −1';
+  const correct=(p.target===1&&net>=0)||(p.target===-1&&net<0);
+  return {p,net,predicted,correct};
+ });
+ patternTrainingLog=logs;
+ patternStepIndex=0;
+ document.getElementById('patternTrainingSteps').innerHTML=`
+   <div class="row-head"><b>Step-by-step Hebb calculation</b><span class="counter" id="patternStepCount"></span></div>
+   <div class="eq-list" id="patternStepEquations"></div>
+   <div class="explain" id="patternStepNote"></div>
+   <div class="controls">
+     <button class="secondary" id="patternPrev" onclick="movePatternStep(-1)">← Previous</button>
+     <button id="patternNext" onclick="movePatternStep(1)">Next Step →</button>
+     <button class="secondary" onclick="restartPatternSteps()">Restart</button>
+   </div>`;
+ document.getElementById('patternResultRows').innerHTML=results.map(r=>`<tr><td>${r.p.name}</td><td>${r.p.target}</td><td>${r.net}</td><td>${r.predicted}</td><td style="background:${r.correct?'#dff1e5':'#f8e2df'}">${r.correct?'Correct':'Incorrect'}</td></tr>`).join('');
+ document.getElementById('lastNet').textContent=results.length?results[results.length-1].net:'—';
+ renderPatternStep();
+}
+function getPatternSteps(){
+ const steps=[];
+ patternTrainingLog.forEach((log,pi)=>{
+  steps.push({pattern:pi,kind:'start',title:`${log.p.name}: Initialize pattern`,equation:`Target y = ${log.y}`,note:`This complete pattern is one training example with one target, y = ${log.y}. Each of its 25 cells is encoded as +1 or −1.`});
+  log.deltas.forEach(d=>{
+   steps.push({pattern:pi,kind:'weight',title:`${log.p.name}: Update weight w${d.i+1}`,equation:`Δw${d.i+1} = x${d.i+1} × y = (${d.xi}) × (${log.y}) = ${d.delta};  w${d.i+1}(new) = ${d.old} + (${d.delta}) = ${d.next}`,note:`Use input value x${d.i+1} = ${d.xi} and target y = ${log.y}. Multiply them to get Δw${d.i+1} = ${d.delta}, then add that change to the old weight ${d.old}.`});
+  });
+  steps.push({pattern:pi,kind:'bias',title:`${log.p.name}: Update bias`,equation:`Δb = y = ${log.y};  b(new) = ${log.oldB} + (${log.y}) = ${log.bias}`,note:`The bias input is fixed at 1, so Δb = 1 × y = y. Add the target to the old bias to get ${log.bias}.`});
+  steps.push({pattern:pi,kind:'finish',title:`${log.p.name}: Pattern update complete`,equation:`Updated 25 weights and bias. Next pattern starts from these new values.`,note:`The weights after this pattern become the old weights for the next pattern. Hebb updates are accumulated in the order the training patterns are presented.`});
+ });
+ return steps;
+}
+function renderPatternStep(){
+ const all=getPatternSteps();if(!all.length)return;
+ patternStepIndex=Math.max(0,Math.min(patternStepIndex,all.length-1));
+ const s=all[patternStepIndex];
+ document.getElementById('patternStepCount').textContent=`Step ${patternStepIndex+1} / ${all.length}`;
+ document.getElementById('patternStepEquations').innerHTML=all.map((q,i)=>`<div class="eq ${i===patternStepIndex?'active':i<patternStepIndex?'done':''}">${q.title}<br><span dir="ltr">${q.equation}</span></div>`).join('');
+ document.getElementById('patternStepNote').textContent=s.note;
+ document.getElementById('patternPrev').disabled=patternStepIndex===0;
+ document.getElementById('patternNext').disabled=patternStepIndex===all.length-1;
+ document.getElementById('patternNext').textContent=patternStepIndex===all.length-1?'Training Complete':'Next Step →';
+}
+function movePatternStep(delta){
+ const all=getPatternSteps();
+ patternStepIndex=Math.max(0,Math.min(all.length-1,patternStepIndex+delta));
+ renderPatternStep();
+}
+function restartPatternSteps(){patternStepIndex=0;renderPatternStep();}
+
+renderPatternEditors();renderSelectedVector();
+
+renderAll();
+</script>
+</body></html>
